@@ -3,6 +3,7 @@
 import fire
 import json
 import os
+import requests
 import numpy as np
 import tensorflow as tf
 
@@ -16,7 +17,9 @@ def interact_model(
     length=None,
     temperature=1,
     top_k=0,
-    top_p=0.0
+    top_p=0.0,
+    prompt_url=None,
+    author='Alan Watts'
 ):
     """
     Interactively run the model
@@ -67,23 +70,52 @@ def interact_model(
         ckpt = tf.train.latest_checkpoint(os.path.join('models', model_name))
         saver.restore(sess, ckpt)
 
+        if prompt_url:
+            r = requests.get(prompt_url)
+            prompt = r.text
+            batches = get_batches(prompt, enc, nsamples, batch_size, sess, output)
+            quotes = []
+            for batch in batches:
+                quotes.extend(find_quotes(batch))
+            for quote in quotes:
+                print(quote)
+            return
+
         while True:
             raw_text = input("Model prompt >>> ")
             while not raw_text:
                 print('Prompt should not be empty!')
                 raw_text = input("Model prompt >>> ")
-            context_tokens = enc.encode(raw_text)
-            generated = 0
-            for _ in range(nsamples // batch_size):
-                out = sess.run(output, feed_dict={
-                    context: [context_tokens for _ in range(batch_size)]
-                })[:, len(context_tokens):]
-                for i in range(batch_size):
-                    generated += 1
-                    text = enc.decode(out[i])
-                    print("=" * 40 + " SAMPLE " + str(generated) + " " + "=" * 40)
-                    print(text)
-            print("=" * 80)
+            batches = get_batches(prompt, enc, nsamples, batch_size, sess, output)
+            quotes = []
+            for batch in batches:
+                quotes.extend(find_quotes(batch))
+            for quote in quotes:
+                print(quote)
+
+def get_batches(prompt, enc, nsamples, batch_size, sess, output):
+    context_tokens = enc.encode(prompt)
+    generated = 0
+    for _ in range(nsamples // batch_size):
+        out = sess.run(output, feed_dict={
+            context: [context_tokens for _ in range(batch_size)]
+        })[:, len(context_tokens):]
+        batches = []
+        for i in range(batch_size):
+            generated += 1
+            text = enc.decode(out[i])
+            batches.append(text)
+
+    return batches
+
+def find_quotes(batch):
+    quotes = []
+    potential_quotes = batch.split('\n\n')
+
+    for potential_quote in potential_quotes:
+        if potential_quote.startswith('"') and potential_quote.endswith('" - Alan Watts'):
+            quotes.append(potential_quote)
+    return quotes
 
 if __name__ == '__main__':
     fire.Fire(interact_model)
