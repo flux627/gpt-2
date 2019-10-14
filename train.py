@@ -77,7 +77,7 @@ def main():
     enc = encoder.get_encoder(args.model_name)
     prompt = None
     if args.prompt_url:
-        prompt = requests.get(prompt_url).text
+        prompt = requests.get(args.prompt_url).text
     hparams = model.default_hparams()
     with open(os.path.join('models', args.model_name, 'hparams.json')) as f:
         hparams.override_from_dict(json.load(f))
