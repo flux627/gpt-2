@@ -52,6 +52,8 @@ parser.add_argument('--val_batch_size', metavar='SIZE', type=int, default=2, hel
 parser.add_argument('--val_batch_count', metavar='N', type=int, default=40, help='Number of batches for validation.')
 parser.add_argument('--val_every', metavar='STEPS', type=int, default=0, help='Calculate validation loss every STEPS steps.')
 
+parser.add_argument('--prompt_url', metavar='URL', type=str, default=None, help='URL to fetch prompt for samples.')
+
 
 def maketree(path):
     try:
@@ -211,20 +213,22 @@ def main():
 
         def generate_samples():
             print('Generating samples...')
-            context_tokens = data_sampler.sample(1)
+            context_tokens = enc.encode(prompt)
             all_text = []
             index = 0
             while index < args.sample_num:
                 out = sess.run(
                     tf_sample,
                     feed_dict={context: args.batch_size * [context_tokens]})
-                for i in range(min(args.sample_num - index, args.batch_size)):
+                for i in range(args.batch_size):
+                    prepend = ''
+                    if index == 0:
+                        prepend = '"'
                     text = enc.decode(out[i])
-                    text = '======== SAMPLE {} ========\n{}\n'.format(
-                        index + 1, text)
-                    all_text.append(text)
+                    all_text.append(prepend + text)
                     index += 1
-            print(text)
+            for one_text in all_text:
+                print(one_text)
             maketree(os.path.join(SAMPLE_DIR, args.run_name))
             with open(
                     os.path.join(SAMPLE_DIR, args.run_name,
