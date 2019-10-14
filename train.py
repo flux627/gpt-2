@@ -228,11 +228,8 @@ def main():
                     tf_sample,
                     feed_dict={context: args.batch_size * [context_tokens]})
                 for i in range(min(args.sample_num - index, args.batch_size)):
-                    prepend = ''
-                    if index == 0:
-                        prepend = '"'
                     text = enc.decode(out[i])
-                    all_text.append(prepend + text)
+                    all_text.append(text)
                     index += 1
             for one_text in all_text:
                 print(one_text)
