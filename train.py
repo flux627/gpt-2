@@ -5,6 +5,7 @@
 import argparse
 import json
 import os
+import requests
 import numpy as np
 import tensorflow as tf
 import time
@@ -74,6 +75,9 @@ def randomize(context, hparams, p):
 def main():
     args = parser.parse_args()
     enc = encoder.get_encoder(args.model_name)
+    prompt = None
+    if args.prompt_url:
+        prompt = requests.get(prompt_url).text
     hparams = model.default_hparams()
     with open(os.path.join('models', args.model_name, 'hparams.json')) as f:
         hparams.override_from_dict(json.load(f))
@@ -213,14 +217,17 @@ def main():
 
         def generate_samples():
             print('Generating samples...')
-            context_tokens = enc.encode(prompt)
+            if prompt:
+                context_tokens = enc.encode(prompt)
+            else:
+                context_tokens = data_sampler.sample(1)
             all_text = []
             index = 0
             while index < args.sample_num:
                 out = sess.run(
                     tf_sample,
                     feed_dict={context: args.batch_size * [context_tokens]})
-                for i in range(args.batch_size):
+                for i in range(min(args.sample_num - index, args.batch_size)):
                     prepend = ''
                     if index == 0:
                         prepend = '"'
